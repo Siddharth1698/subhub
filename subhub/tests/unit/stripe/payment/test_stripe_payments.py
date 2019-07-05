@@ -3,6 +3,9 @@ import requests
 import boto3
 import flask
 
+import stripe.error
+from mockito import when, mock, unstub
+
 from subhub.cfg import CFG
 from subhub import secrets
 
@@ -18,6 +21,20 @@ def run_customer(mocker, data, filename):
 
 
 def test_stripe_payment_intent_succeeded(mocker):
+    invoice_response = mock(
+        {
+            "id": "in_000000",
+            "object": "customer",
+            "account_balance": 0,
+            "created": 1563287210,
+            "currency": "usd",
+            "subscription": "sub_000000",
+            "period_start": 1563287210,
+            "period_end": 1563287210,
+        },
+        spec=stripe.Invoice,
+    )
+    when(stripe.Invoice).retrieve(id="in_000000").thenReturn(invoice_response)
     data = {
         "event_id": "evt_00000000000000",
         "event_type": "payment_intent.succeeded",
@@ -30,6 +47,9 @@ def test_stripe_payment_intent_succeeded(mocker):
         "customer_id": "cus_000000",
         "amount": 1000,
         "created": 1559568879,
+        "subscription_id": "sub_000000",
+        "period_start": 1563287210,
+        "period_end": 1563287210,
     }
     basket_url = CFG.SALESFORCE_BASKET_URI + CFG.BASKET_API_KEY
     response = mockito.mock({"status_code": 200, "text": "Ok"}, spec=requests.Response)
@@ -39,3 +59,4 @@ def test_stripe_payment_intent_succeeded(mocker):
     mockito.when(requests).post(basket_url, json=data).thenReturn(response)
     filename = "payment/payment-intent-succeeded.json"
     run_customer(mocker, data, filename)
+    unstub()
