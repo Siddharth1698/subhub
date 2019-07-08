@@ -302,10 +302,13 @@ def create_update_data(customer) -> dict:
     """
     return_data = dict()
     return_data["subscriptions"] = []
-    return_data["payment_type"] = customer["sources"]["data"][0]["funding"]
-    return_data["last4"] = customer["sources"]["data"][0]["last4"]
-    return_data["exp_month"] = customer["sources"]["data"][0]["exp_month"]
-    return_data["exp_year"] = customer["sources"]["data"][0]["exp_year"]
+
+    data = customer["sources"]["data"]
+    data0 = data[0] if len(data) else {}
+    return_data["payment_type"] = data0.get("funding", "NONE")
+    return_data["last4"] = data0.get("last4", "NONE")
+    return_data["exp_month"] = data0.get("exp_month", "NONE")
+    return_data["exp_year"] = data0.get("exp_year", "NONE")
 
     for subscription in customer["subscriptions"]["data"]:
         if subscription["status"] == "incomplete":
