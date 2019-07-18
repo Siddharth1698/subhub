@@ -50,6 +50,7 @@ def test_stripe_payment_intent_succeeded(mocker):
         "subscription_id": "sub_000000",
         "period_start": 1563287210,
         "period_end": 1563287210,
+        "currency": "usd",
     }
     basket_url = CFG.SALESFORCE_BASKET_URI + CFG.BASKET_API_KEY
     response = mockito.mock({"status_code": 200, "text": "Ok"}, spec=requests.Response)

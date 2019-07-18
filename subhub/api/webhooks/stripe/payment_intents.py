@@ -36,6 +36,7 @@ class StripePaymentIntentSucceeded(AbstractStripeWebhookEvent):
                 customer_id=self.payload.data.object.customer,
                 amount=sum([p.amount - p.amount_refunded for p in charges.data]),
                 created=self.payload.data.object.created,
+                currency=self.payload.data.object.currency,
             )
             routes = [StaticRoutes.SALESFORCE_ROUTE]
             self.send_to_routes(routes, json.dumps(data))

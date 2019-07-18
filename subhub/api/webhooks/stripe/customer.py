@@ -84,7 +84,6 @@ class StripeCustomerSourceExpiring(AbstractStripeWebhookEvent):
             raise InvalidRequestError(message="Unable to find customer", param=str(e))
 
 
-
 class StripeCustomerSubscriptionCreated(AbstractStripeWebhookEvent):
     def run(self):
         try:
