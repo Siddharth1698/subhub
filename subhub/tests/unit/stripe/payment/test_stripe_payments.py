@@ -45,7 +45,7 @@ def test_stripe_payment_intent_succeeded(mocker):
         "charge_id": "ch_000000",
         "invoice_id": "in_000000",
         "customer_id": "cus_000000",
-        "amount": 1000,
+        "amount_paid": 1000,
         "created": 1559568879,
         "subscription_id": "sub_000000",
         "period_start": 1563287210,
