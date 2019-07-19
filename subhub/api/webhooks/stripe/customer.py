@@ -68,16 +68,17 @@ class StripeCustomerSourceExpiring(AbstractStripeWebhookEvent):
             logger.info("customer id", customer_id=customer_id)
             updated_customer = stripe.Customer.retrieve(id=customer_id)
             logger.info("updated customer", updated_customer=updated_customer)
-            email = updated_customer.get("email")
+            email = updated_customer.email
             logger.info("email", email=email)
             nicknames = list()
-            for subs in updated_customer["subscriptions"]["data"]:
-                if subs["status"] == "active":
+            logger.info("subs", updated_customer=updated_customer.subscriptions["data"])
+            for subs in updated_customer.subscriptions["data"]:
+                if subs["status"] in ["active", "trialing"]:
                     nicknames.append(subs["plan"]["nickname"])
             logger.info("expiring nickname", nickname=nicknames[0])
             data = self.create_data(
                 email=email,
-                nicknames=nicknames[0],
+                nickname=nicknames[0],
                 customer_id=self.payload.data.object.customer,
                 last4=self.payload.data.object.last4,
                 brand=self.payload.data.object.brand,

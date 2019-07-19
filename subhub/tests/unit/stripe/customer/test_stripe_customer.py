@@ -86,6 +86,8 @@ def test_stripe_webhook_customer_source_expiring(mocker):
         "brand": "Visa",
         "exp_month": 5,
         "exp_year": 2019,
+        "nickname": "moz plan",
+        "email": "tester@johnson.com",
     }
     customer_response = mock(
         {
@@ -95,6 +97,25 @@ def test_stripe_webhook_customer_source_expiring(mocker):
             "created": 1563287210,
             "currency": "usd",
             "metadata": {"userid": "user123"},
+            "email": "tester@johnson.com",
+            "subscriptions": {
+                "data": [
+                    {
+                        "id": "1",
+                        "status": "active",
+                        "plan": {
+                            "nickname": "moz plan"
+                        }
+                    },
+                    {
+                        "id": "2",
+                        "status": "canceled",
+                        "plan": {
+                            "nickname": "fxa plan"
+                        }
+                    }
+                ]
+            }
         },
         spec=stripe.Customer,
     )
@@ -103,7 +124,7 @@ def test_stripe_webhook_customer_source_expiring(mocker):
     )
     basket_url = CFG.SALESFORCE_BASKET_URI + CFG.BASKET_API_KEY
     response = mock({"status_code": 200, "text": "Ok"}, spec=requests.Response)
-    when(boto3).client("sqs", region_name=CFG.AWS_REGION).thenReturn(MockSqsClient)
+    # when(boto3).client("sqs", region_name=CFG.AWS_REGION).thenReturn(MockSqsClient)
     when(requests).post(basket_url, json=data).thenReturn(response)
     filename = "customer/customer-source-expiring.json"
     run_customer(mocker, data, filename)
