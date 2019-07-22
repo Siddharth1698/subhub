@@ -46,8 +46,8 @@ class StripeHubEventPipeline:
             StripeCustomerDeleted(self.payload).run()
         elif event_type == "customer.source.expiring":
             StripeCustomerSourceExpiring(self.payload).run()
-        elif event_type == "subscription.created":
-            StripeSubscriptionCreated(self.payload).run()
+        elif event_type == "charge.succeeded":
+            StripeChargeSucceededEvent(self.payload).run()
         elif event_type == "invoice.finalized":
             StripeInvoiceFinalized(self.payload).run()
         elif event_type == "payment_intent.succeeded":
