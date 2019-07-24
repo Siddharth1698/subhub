@@ -40,8 +40,8 @@ class StripeWebhookEventPipeline:
             StripeCustomerDeleted(self.payload).run()
         elif event_type == "customer.source.expiring":
             StripeCustomerSourceExpiring(self.payload).run()
-        elif event_type == "charge.succeeded":
-            StripeChargeSucceededEvent(self.payload).run()
+        # elif event_type == "charge.succeeded":
+        #     StripeChargeSucceededEvent(self.payload).run()
         elif event_type == "subscription.created":
             StripeSubscriptionCreated(self.payload).run()
         elif event_type == "invoice.finalized":
@@ -57,6 +57,8 @@ class StripeWebhookEventPipeline:
 def view() -> tuple:
     try:
         payload = request.data
+        logger.info("check payload", payload=payload)
+        logger.info("payload type", type=type(payload))
         sig_header = request.headers["Stripe-Signature"]
         event = stripe.Webhook.construct_event(payload, sig_header, CFG.WEBHOOK_API_KEY)
         p = StripeWebhookEventPipeline(event)

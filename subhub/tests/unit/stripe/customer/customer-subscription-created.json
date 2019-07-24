@@ -99,7 +99,7 @@
       "quantity": 1,
       "schedule": null,
       "start": 1519435009,
-      "status": "canceled",
+      "status": "active",
       "tax_percent": null,
       "trial_end": null,
       "trial_start": null

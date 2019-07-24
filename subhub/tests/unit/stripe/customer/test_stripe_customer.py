@@ -100,22 +100,10 @@ def test_stripe_webhook_customer_source_expiring(mocker):
             "email": "tester@johnson.com",
             "subscriptions": {
                 "data": [
-                    {
-                        "id": "1",
-                        "status": "active",
-                        "plan": {
-                            "nickname": "moz plan"
-                        }
-                    },
-                    {
-                        "id": "2",
-                        "status": "canceled",
-                        "plan": {
-                            "nickname": "fxa plan"
-                        }
-                    }
+                    {"id": "1", "status": "active", "plan": {"nickname": "moz plan"}},
+                    {"id": "2", "status": "canceled", "plan": {"nickname": "fxa plan"}},
                 ]
-            }
+            },
         },
         spec=stripe.Customer,
     )
@@ -146,18 +134,24 @@ def test_stripe_webhook_customer_subscription_created(mocker):
         customer_response
     )
     data = {
-        "active": False,
+        "uid": "user123",
+        "active": True,
         "subscriptionId": "sub_00000000000000",
+        "subscription_id": "sub_00000000000000",
         "productName": "subhub",
         "eventId": "evt_00000000000000",
         "eventCreatedAt": 1326853478,
         "messageCreatedAt": int(time.time()),
-        "event_type": "customer.subscription.created",
-        "event_id": "evt_00000000000000",
         "invoice_id": "in_test123",
         "plan_amount": 500,
         "customer_id": "cus_00000000000000",
         "nickname": "subhub",
+        "created": 1519363457,
+        "canceled_at": 1519680008,
+        "cancel_at": None,
+        "event_type": "customer.subscription.created",
+        "event_id": "evt_00000000000000",
+        "cancel_at_period_end": False,
     }
     logger.info("created payload", data=data)
     basket_url = CFG.SALESFORCE_BASKET_URI + CFG.BASKET_API_KEY
@@ -184,6 +178,7 @@ def test_stripe_webhook_customer_subscription_updated_cancel(mocker):
         "cancel_at_period_end": True,
         "nickname": "subhub",
         "messageCreatedAt": int(time.time()),
+        "invoice_id": "in_test123",
         "uid": "user123",
     }
     customer_response = mock(
@@ -224,7 +219,7 @@ def test_stripe_webhook_customer_subscription_updated_no_cancel(mocker):
         "nickname": "subhub",
         "active": False,
         "productName": "subhub",
-        "invoice_id": "in_test124",
+        "invoice_id": "in_test123",
         "created": 1519363457,
         "amount_paid": 500,
         "eventId": "evt_00000000000000",

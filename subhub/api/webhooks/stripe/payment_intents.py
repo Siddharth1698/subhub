@@ -13,11 +13,10 @@ logger = get_logger()
 
 class StripePaymentIntentSucceeded(AbstractStripeWebhookEvent):
     def run(self):
+        logger.info("payment intent succeeded", payload=self.payload)
         try:
             invoice_id = self.payload.data.object.invoice
-            logger.info("invoice id", invoice_id=invoice_id)
             invoice = stripe.Invoice.retrieve(id=invoice_id)
-            logger.info("invoice", invoice=invoice)
             subscription_id = invoice.subscription
             period_start = invoice.period_start
             period_end = invoice.period_end
