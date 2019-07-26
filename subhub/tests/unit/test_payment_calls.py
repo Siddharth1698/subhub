@@ -244,17 +244,6 @@ def test_create_subscription_with_invalid_plan_id(app):
     assert "No such plan:" in exception.user_message
 
 
-def test_list_all_plans_valid():
-    """
-    GIVEN should list all available plans
-    WHEN provided an api_token,
-    THEN validate able to list all available plans
-    """
-    plans, code = payments.list_all_plans()
-    assert len(plans) > 0
-    assert 200 == code
-
-
 def test_cancel_subscription_with_valid_data(app, create_subscription_for_processing):
     """
     GIVEN should cancel an active subscription

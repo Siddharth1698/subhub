@@ -39,6 +39,53 @@ def test_subhub():
     assert isinstance(app, connexion.FlaskApp)
 
 
+def test_list_plans(app, monkeypatch):
+    """
+    GIVEN a valid token
+    WHEN a request for plans is made
+    THEN a success status of 200 is returned
+    """
+    client = app.app.test_client()
+
+    plans_data = [
+        {
+            "id": "plan_1",
+            "product": "prod_1",
+            "interval": "month",
+            "amount": 25,
+            "currency": "usd",
+            "nickname": "Plan 1",
+        },
+        {
+            "id": "plan_2",
+            "product": "prod_1",
+            "interval": "year",
+            "amount": 250,
+            "currency": "usd",
+            "nickname": "Plan 2",
+        },
+    ]
+
+    product_data = {"name": "Product 1"}
+
+    plans = Mock(return_value=plans_data)
+
+    product = Mock(return_value=product_data)
+
+    monkeypatch.setattr("stripe.Plan.list", plans)
+    monkeypatch.setattr("stripe.Product.retrieve", product)
+
+    path = "v1/plans"
+
+    response = client.get(
+        path,
+        headers={"Authorization": "fake_payment_api_key"},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+
+
 def test_update_customer_payment_server_stripe_error_with_params(app, monkeypatch):
     """
     GIVEN the route POST v1/customer/{id} is called
