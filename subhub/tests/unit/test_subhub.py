@@ -6,7 +6,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import json
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, MagicMock
 
 import connexion
 import stripe.error
@@ -115,6 +115,62 @@ def test_customer_signup_server_stripe_error_with_params(app, monkeypatch):
 
     assert response.status_code == 500
     assert "No such plan" in loaded_data["message"]
+
+
+def test_subscribe_success(app, monkeypatch):
+    """
+    GIVEN a route that attempts to make a stripe payment
+    WHEN the card is declined
+    THEN the error thrown by stripe will be handled and return a 402
+    """
+
+    client = app.app.test_client()
+
+    subscription_data = {
+        "id": "sub_123",
+        "status": "active",
+        "current_period_end": 1566833524,
+        "current_period_start": 1564155124,
+        "ended_at": None,
+        "plan": {"id": "plan_123", "nickname": "Monthly VPN Subscription"},
+        "cancel_at_period_end": False,
+    }
+
+    mock_false = Mock(return_value=False)
+
+    customer = Mock(return_value=MockCustomer())
+
+    customer_updated = MagicMock(
+        return_value={"id": "cust_123", "subscriptions": {"data": [subscription_data]}}
+    )
+
+    create = Mock(return_value={"id": "sub_234"})
+
+    user = Mock(return_value=MockSubhubUser())
+
+    monkeypatch.setattr("flask.g.subhub_account.get_user", user)
+    monkeypatch.setattr("stripe.Customer.retrieve", customer_updated)
+    monkeypatch.setattr("subhub.api.payments.has_existing_plan", mock_false)
+    monkeypatch.setattr("subhub.api.payments.existing_or_new_customer", customer)
+    monkeypatch.setattr("stripe.Subscription.create", create)
+
+    path = "v1/customer/subtest/subscriptions"
+    data = {
+        "pmt_token": "tok_visa",
+        "plan_id": "plan",
+        "orig_system": "Test_system",
+        "email": "subtest@example.com",
+        "display_name": "John Tester",
+    }
+
+    response = client.post(
+        path,
+        headers={"Authorization": "fake_payment_api_key"},
+        data=json.dumps(data),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 201
 
 
 def test_subscribe_card_declined_error_handler(app, monkeypatch):

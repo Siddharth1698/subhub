@@ -67,50 +67,85 @@ def test_existing_or_new_customer_invalid_origin_system():
     assert msg == str(request_error.value)
 
 
-def test_create_customer_tok_visa():
+def test_create_customer(monkeypatch):
     """
     GIVEN create a stripe customer
     WHEN provided a test visa token and test fxa
     THEN validate the customer metadata is correct
     """
+    mock_possible_customers = MagicMock()
+    data = PropertyMock(return_value=[])
+    type(mock_possible_customers).data = data
+
+    mock_customer = MagicMock()
+    id = PropertyMock(return_value="cust_123")
+    type(mock_customer).id = id
+
+    subhub_account = MagicMock()
+
+    mock_user = MagicMock()
+    user_id = PropertyMock(return_value="user_123")
+    cust_id = PropertyMock(return_value="cust_123")
+    type(mock_user).user_id = user_id
+    type(mock_user).cust_id = cust_id
+
+    mock_save = MagicMock(return_value=True)
+
+    subhub_account.new_user = mock_user
+    subhub_account.save_user = mock_save
+
+    monkeypatch.setattr("stripe.Customer.list", mock_possible_customers)
+    monkeypatch.setattr("stripe.Customer.create", mock_customer)
+
     customer = create_customer(
-        g.subhub_account,
-        user_id="test_mozilla",
+        subhub_account,
+        user_id="user_123",
         source_token="tok_visa",
         email="test_visa@tester.com",
         origin_system="Test_system",
         display_name="John Tester",
     )
-    pytest.customer = customer
-    assert customer["metadata"]["userid"] == "test_mozilla"
+
+    assert customer is not None
 
 
-def test_create_customer_tok_mastercard():
-    """
-    GIVEN create a stripe customer
-    WHEN provided a test mastercard token and test userid
-    THEN validate the customer metadata is correct
-    """
-    customer = create_customer(
-        g.subhub_account,
-        user_id="test_mozilla",
-        source_token="tok_mastercard",
-        email="test_mastercard@tester.com",
-        origin_system="Test_system",
-        display_name="John Tester",
-    )
-    assert customer["metadata"]["userid"] == "test_mozilla"
-
-
-def test_create_customer_tok_invalid():
+def test_create_customer_tok_invalid(monkeypatch):
     """
     GIVEN create a stripe customer
     WHEN provided an invalid test token and test userid
     THEN validate the customer metadata is correct
     """
+    mock_possible_customers = MagicMock()
+    data = PropertyMock(return_value=[])
+    type(mock_possible_customers).data = data
+
+    mock_customer_error = Mock(
+        side_effect=InvalidRequestError(
+            message="Customer instance has invalid ID",
+            param="customer_id",
+            code="invalid",
+        )
+    )
+
+    subhub_account = MagicMock()
+
+    mock_user = MagicMock()
+    user_id = PropertyMock(return_value="user_123")
+    cust_id = PropertyMock(return_value="cust_123")
+    type(mock_user).user_id = user_id
+    type(mock_user).cust_id = cust_id
+
+    mock_save = MagicMock(return_value=True)
+
+    subhub_account.new_user = mock_user
+    subhub_account.save_user = mock_save
+
+    monkeypatch.setattr("stripe.Customer.list", mock_possible_customers)
+    monkeypatch.setattr("stripe.Customer.create", mock_customer_error)
+
     with pytest.raises(InvalidRequestError):
-        customer = create_customer(
-            g.subhub_account,
+        create_customer(
+            subhub_account,
             user_id="test_mozilla",
             source_token="tok_invalid",
             email="test_invalid@tester.com",
@@ -119,64 +154,40 @@ def test_create_customer_tok_invalid():
         )
 
 
-def test_create_customer_tok_avsFail():
-    """
-    GIVEN create a stripe customer
-    WHEN provided an invalid test token and test userid
-    THEN validate the customer metadata is correct
-    """
-    customer = create_customer(
-        g.subhub_account,
-        user_id="test_mozilla",
-        source_token="tok_avsFail",
-        email="test_avsfail@tester.com",
-        origin_system="Test_system",
-        display_name="John Tester",
-    )
-    assert customer["metadata"]["userid"] == "test_mozilla"
-
-
-def test_create_customer_tok_avsUnchecked():
-    """
-    GIVEN create a stripe customer
-    WHEN provided an invalid test token and test userid
-    THEN validate the customer metadata is correct
-    """
-    customer = create_customer(
-        g.subhub_account,
-        user_id="test_mozilla",
-        source_token="tok_avsUnchecked",
-        email="test_avsunchecked@tester.com",
-        origin_system="Test_system",
-        display_name="John Tester",
-    )
-    assert customer["metadata"]["userid"] == "test_mozilla"
-
-
-def test_subscribe_customer(create_customer_for_processing):
+def test_subscribe_customer(monkeypatch):
     """
     GIVEN create a subscription
     WHEN provided a customer and plan
     THEN validate subscription is created
     """
-    customer = create_customer_for_processing
-    subscription = subscribe_customer(customer, "plan_EtMcOlFMNWW4nd")
-    assert subscription["plan"]["active"]
+    mock_customer = MagicMock()
+    id = PropertyMock(return_value="cust_123")
+    type(mock_customer).id = id
+
+    mock_subscription = MagicMock()
+
+    monkeypatch.setattr("stripe.Subscription.create", mock_subscription)
+
+    subscription = subscribe_customer(mock_customer, "plan_EtMcOlFMNWW4nd")
+    assert subscription is not None
 
 
-def test_subscribe_customer_invalid_plan(create_customer_for_processing):
+def test_subscribe_customer_invalid_plan(monkeypatch):
     """
     GIVEN create a subscription
     WHEN provided a customer and plan
     THEN validate subscription is created
     """
-    customer = create_customer_for_processing
-    try:
-        subscribe_customer(customer, "plan_notvalid")
-    except Exception as e:
-        exception = e
-    assert isinstance(exception, InvalidRequestError)
-    assert "Unable to create plan" in exception.user_message
+    mock_customer = MagicMock()
+    id = PropertyMock(return_value="cust_123")
+    type(mock_customer).id = id
+
+    mock_subscribe = Mock(side_effect=InvalidRequestError)
+
+    monkeypatch.setattr("stripe.Subscription.create", mock_subscribe)
+
+    with pytest.raises(InvalidRequestError):
+        subscribe_customer(mock_customer, "invalid_plan_id")
 
 
 def test_create_subscription_with_valid_data():
