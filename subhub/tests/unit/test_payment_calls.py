@@ -190,64 +190,6 @@ def test_subscribe_customer_invalid_plan(monkeypatch):
         subscribe_customer(mock_customer, "invalid_plan_id")
 
 
-def test_create_subscription_with_valid_data():
-    """
-    GIVEN create a subscription
-    WHEN provided a api_token, userid, pmt_token, plan_id, cust_id
-    THEN validate subscription is created
-    """
-    uid = uuid.uuid4()
-    subscription, code = payments.subscribe_to_plan(
-        "validcustomer",
-        {
-            "pmt_token": "tok_visa",
-            "plan_id": "plan_EtMcOlFMNWW4nd",
-            "email": "valid@{}customer.com".format(uid),
-            "orig_system": "Test_system",
-            "display_name": "Jon Tester",
-        },
-    )
-    assert 201 == code
-    payments.cancel_subscription(
-        "validcustomer", subscription["subscriptions"][0]["subscription_id"]
-    )
-    g.subhub_account.remove_from_db("validcustomer")
-
-
-def test_subscribe_customer_existing(create_customer_for_processing):
-    """
-    GIVEN create a subscription
-    WHEN provided a customer and plan
-    THEN validate subscription is created
-    """
-    uid = uuid.uuid4()
-    subscription, code = payments.subscribe_to_plan(
-        "validcustomer",
-        {
-            "pmt_token": "tok_visa",
-            "plan_id": "plan_EtMcOlFMNWW4nd",
-            "email": f"valid@{uid}customer.com",
-            "orig_system": "Test_system",
-            "display_name": "Jon Tester",
-        },
-    )
-    subscription2, code2 = payments.subscribe_to_plan(
-        "validcustomer",
-        {
-            "pmt_token": "tok_visa",
-            "plan_id": "plan_EtMcOlFMNWW4nd",
-            "email": f"valid@{uid}customer.com",
-            "orig_system": "Test_system",
-            "display_name": "Jon Tester",
-        },
-    )
-    assert 409 == code2
-    payments.cancel_subscription(
-        "validcustomer", subscription["subscriptions"][0]["subscription_id"]
-    )
-    g.subhub_account.remove_from_db("validcustomer")
-
-
 def test_create_subscription_with_invalid_payment_token():
     """
     GIVEN a api_token, userid, invalid pmt_token, plan_id, email

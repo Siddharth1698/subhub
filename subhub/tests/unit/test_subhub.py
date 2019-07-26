@@ -119,9 +119,9 @@ def test_customer_signup_server_stripe_error_with_params(app, monkeypatch):
 
 def test_subscribe_success(app, monkeypatch):
     """
-    GIVEN a route that attempts to make a stripe payment
-    WHEN the card is declined
-    THEN the error thrown by stripe will be handled and return a 402
+    GIVEN a route that attempts to make a subscribe a customer
+    WHEN valid data is provided
+    THEN a success status of 201 will be returned
     """
 
     client = app.app.test_client()
@@ -171,6 +171,38 @@ def test_subscribe_success(app, monkeypatch):
     )
 
     assert response.status_code == 201
+
+
+def test_subscribe_customer_existing(app, monkeypatch):
+    """
+    GIVEN a route that attempts to make a subscribe a customer
+    WHEN the customer already exists
+    THEN an error status of 409 will be returned
+    """
+
+    client = app.app.test_client()
+
+    mock_true = Mock(return_value=True)
+
+    monkeypatch.setattr("subhub.api.payments.has_existing_plan", mock_true)
+
+    path = "v1/customer/subtest/subscriptions"
+    data = {
+        "pmt_token": "tok_visa",
+        "plan_id": "plan",
+        "orig_system": "Test_system",
+        "email": "subtest@example.com",
+        "display_name": "John Tester",
+    }
+
+    response = client.post(
+        path,
+        headers={"Authorization": "fake_payment_api_key"},
+        data=json.dumps(data),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 409
 
 
 def test_subscribe_card_declined_error_handler(app, monkeypatch):
