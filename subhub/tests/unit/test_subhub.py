@@ -138,15 +138,15 @@ def test_customer_signup_server_stripe_error_with_params(app, monkeypatch):
             message="No such plan: invalid", param="plan_id", code="invalid_plan"
         )
     )
-    monkeypatch.setattr("subhub.api.payments.has_existing_plan", none)
-    monkeypatch.setattr("subhub.api.payments.existing_or_new_customer", customer)
+    monkeypatch.setattr("subhub.sub.payments.has_existing_plan", none)
+    monkeypatch.setattr("subhub.sub.payments.existing_or_new_customer", customer)
     monkeypatch.setattr("stripe.Subscription.create", create)
 
     path = "v1/customer/process_test/subscriptions"
     data = {
         "pmt_token": "tok_visa",
         "plan_id": "invalid",
-        "orig_system": "Test_system",
+        "origin_system": "Test_system",
         "email": "subtest@example.com",
         "display_name": "John Tester",
     }
@@ -269,15 +269,15 @@ def test_subscribe_card_declined_error_handler(app, monkeypatch):
             message="card declined", param="", code="generic_decline"
         )
     )
-    monkeypatch.setattr("subhub.api.payments.has_existing_plan", none)
-    monkeypatch.setattr("subhub.api.payments.existing_or_new_customer", customer)
+    monkeypatch.setattr("subhub.sub.payments.has_existing_plan", none)
+    monkeypatch.setattr("subhub.sub.payments.existing_or_new_customer", customer)
     monkeypatch.setattr("stripe.Subscription.create", create)
 
     path = "v1/customer/subtest/subscriptions"
     data = {
         "pmt_token": "tok_visa",
         "plan_id": "plan",
-        "orig_system": "Test_system",
+        "origin_system": "Test_system",
         "email": "subtest@example.com",
         "display_name": "John Tester",
     }

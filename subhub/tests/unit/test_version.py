@@ -6,11 +6,12 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 from subhub.cfg import CFG
-from subhub.api.version import get_version
+from subhub.sub.version import get_version
 
 
 def test_get_version():
     """
     test get_version
     """
-    assert get_version() == ({"message": CFG.VERSION}, 200)
+    version = dict(BRANCH=CFG.BRANCH, VERSION=CFG.VERSION, REVISION=CFG.REVISION)
+    assert get_version() == (version, 200)

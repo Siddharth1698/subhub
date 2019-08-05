@@ -7,10 +7,11 @@
 
 from datetime import datetime
 
+import cachetools
 from stripe import Charge, Customer, Invoice, Plan, Product, Subscription
 from flask import g
 
-from subhub.api.types import JsonDict, FlaskResponse, FlaskListResponse
+from subhub.sub.types import JsonDict, FlaskResponse, FlaskListResponse
 from subhub.customer import existing_or_new_customer, has_existing_plan, fetch_customer
 from subhub.exceptions import ClientError
 from subhub.log import get_logger
@@ -30,7 +31,7 @@ def subscribe_to_plan(uid, data) -> FlaskResponse:
         user_id=uid,
         email=data["email"],
         source_token=data["pmt_token"],
-        origin_system=data["orig_system"],
+        origin_system=data["origin_system"],
         display_name=data["display_name"],
     )
     existing_plan = has_existing_plan(customer, plan_id=data["plan_id"])
@@ -78,6 +79,11 @@ def list_all_plans() -> FlaskListResponse:
     List all available plans for a user to purchase.
     :return:
     """
+    return _get_all_plans(), 200
+
+
+@cachetools.cached(cachetools.TTLCache(10, 600))
+def _get_all_plans():
     plans = Plan.list(limit=100)
     logger.info("number of plans", count=len(plans))
     stripe_plans = []
@@ -94,7 +100,7 @@ def list_all_plans() -> FlaskListResponse:
                 "product_name": product["name"],
             }
         )
-    return stripe_plans, 200
+    return stripe_plans
 
 
 def check_stripe_subscriptions(customer: Customer) -> list:

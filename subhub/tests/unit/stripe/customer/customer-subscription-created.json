@@ -69,7 +69,7 @@
         "total_count": 1,
         "url": "/v1/subscription_items?subscription=sub_CNcuSboLSixkQV"
       },
-      "latest_invoice": null,
+      "latest_invoice": "in_test123",
       "livemode": false,
       "metadata": {
         "userid": "tester123"
@@ -99,7 +99,7 @@
       "quantity": 1,
       "schedule": null,
       "start": 1519435009,
-      "status": "canceled",
+      "status": "active",
       "tax_percent": null,
       "trial_end": null,
       "trial_start": null

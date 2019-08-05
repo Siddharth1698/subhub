@@ -19,6 +19,7 @@ import platform
 
 from datetime import datetime
 from decouple import UndefinedValueError, AutoConfig, config
+from functools import lru_cache
 from subprocess import Popen, CalledProcessError, PIPE
 
 from logging import getLogger
@@ -121,7 +122,7 @@ class AutoConfigPlus(AutoConfig):  # pylint: disable=too-many-public-methods
             "stage": "INFO",
             "qa": "INFO",
             "dev": "DEBUG",
-        }.get(self.DEPLOY_ENV, "NOTSET")
+        }.get(self.DEPLOYED_ENV, "NOTSET")
         return self("LOG_LEVEL", default_level)
 
     @property
@@ -145,7 +146,7 @@ class AutoConfigPlus(AutoConfig):  # pylint: disable=too-many-public-methods
             return self("BRANCH")
 
     @property
-    def DEPLOY_ENV(self):
+    def DEPLOYED_ENV(self):
         """
         deployment environment
         """
@@ -335,11 +336,11 @@ class AutoConfigPlus(AutoConfig):  # pylint: disable=too-many-public-methods
         return self("AWS_SECRET_ACCESS_KEY", "fake_aws_secret_access_key")
 
     @property
-    def WEBHOOK_API_KEY(self):
+    def HUB_API_KEY(self):
         """
-        webhook api key
+        hub api key
         """
-        return self("WEBHOOK_API_KEY", "fake_webhook_api_key")
+        return self("HUB_API_KEY", "fake_hub_api_key")
 
     @property
     def AWS_EXECUTION_ENV(self):
@@ -353,21 +354,21 @@ class AutoConfigPlus(AutoConfig):  # pylint: disable=too-many-public-methods
         """
         boolean property to determine if we should swagger or not
         """
-        return self.DEPLOY_ENV in ("stage", "qa", "dev")
+        return self.DEPLOYED_ENV in ("stage", "qa", "dev")
 
     @property
     def NEW_RELIC_ACCOUNT_ID(self):
         """
         NEW_RELIC_ACCOUNT_ID
         """
-        return self("NEW_RELIC_ACCOUNT_ID", 2_239_138)
+        return self("NEW_RELIC_ACCOUNT_ID", 2_423_519)
 
     @property
     def NEW_RELIC_TRUSTED_ACCOUNT_ID(self):
         """
         NEW_RELIC_TRUSTED_ACCOUNT_ID
         """
-        return self("NEW_RELIC_TRUSTED_ACCOUNT_ID", 2_239_138)
+        return self("NEW_RELIC_TRUSTED_ACCOUNT_ID", 2_423_519)
 
     @property
     def NEW_RELIC_SERVERLESS_MODE_ENABLED(self):
@@ -389,6 +390,13 @@ class AutoConfigPlus(AutoConfig):  # pylint: disable=too-many-public-methods
         ALLOWED_ORIGIN_SYSTEMS
         """
         return self("ALLOWED_ORIGIN_SYSTEMS", "fake_origin1, fake_origin2").split(",")
+
+    @property
+    def PAYMENT_EVENT_LIST(self):
+        """"
+        PAYMENT_EVENT_LIST
+        """
+        return self("PAYMENT_EVENT_LIST", "test.system, test.event").split(",")
 
     @property
     def PROFILING_ENABLED(self):
@@ -432,6 +440,7 @@ class AutoConfigPlus(AutoConfig):  # pylint: disable=too-many-public-methods
         return self("DEPLOYED_BY", f"{self.USER}@{self.HOSTNAME}")
 
     @property
+    @lru_cache()
     def DEPLOYED_WHEN(self):
         """
         DEPLOYED_WHEN

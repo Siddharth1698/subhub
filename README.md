@@ -8,6 +8,8 @@ Payment subscription REST api for customers:
 ## Required Software
 - python3.7: requires python3.7 interpreter for creating virtual envionments for testing and running subhub
 - yarn (https://yarnpkg.com): package manager for node modules for setting up serverless for running and deploying subhub
+- cloc
+- [GraphViz](https://graphviz.org/)
 
 ## Important Environment Variables
 The CFG object is for accessing values either from the `subhub/.env` file and|or superceeded by env vars.
@@ -45,7 +47,7 @@ This is the support api key.  Defaults to `fake_support_api_key`
 ## Other Important CFG Properties
 These values are calculated and not to be set by a user.  They are mentioned here for clarity.
 
-### DEPLOY_ENV
+### DEPLOYED_ENV
 The deployment environment is determined by the branch name:
 - master: `prod`
 - stage/*: `stage`
@@ -157,7 +159,6 @@ doit test
 ```
 Note: The `test` task is a dependency of `package`, `local` and `deploy` tasks, however you can skip them by setting `SKIP_TESTS=<something>`.
 
-
 ## run package
 This runs the `serverless package` command to zip up the `subhub` code and its dependencies.
 ```
@@ -174,6 +175,18 @@ doit creds
 This run the `serverless deploy` command and requires the user to be logged into the AWS Account for `subhub`.
 ```
 doit deploy
+```
+
+## dependency graph
+This command will generate a GraphViz `dot` file that can be used to generate a media file.
+```
+doit graph
+```
+
+## dependency graph image 
+This command will generate a PNG of the dependency graph.
+```
+doit draw
 ```
 
 ## Postman

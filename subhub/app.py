@@ -18,12 +18,11 @@ from flask import request
 from subhub import secrets
 from subhub.cfg import CFG
 from subhub.exceptions import SubHubError
-from subhub.db import SubHubAccount, WebHookEvent
+from subhub.db import SubHubAccount, HubEvent
 
 from subhub.log import get_logger
 
 logger = get_logger()
-
 
 # Setup Stripe Error handlers
 def intermittent_stripe_error(e):
@@ -33,7 +32,10 @@ def intermittent_stripe_error(e):
 
 def server_stripe_error(e):
     logger.error("server stripe error", error=e)
-    return jsonify({"message": f"{e.user_message}", "code": f"{e.code}"}), 500
+    return (
+        jsonify({"message": f"{e.user_message}", "params": None, "code": f"{e.code}"}),
+        500,
+    )
 
 
 def server_stripe_error_with_params(e):
@@ -71,15 +73,13 @@ def create_app(config=None):
     app.app.subhub_account = SubHubAccount(
         table_name=CFG.USER_TABLE, region=region, host=host
     )
-    app.app.webhook_table = WebHookEvent(
-        table_name=CFG.EVENT_TABLE, region=region, host=host
-    )
+    app.app.hub_table = HubEvent(table_name=CFG.EVENT_TABLE, region=region, host=host)
     if not app.app.subhub_account.model.exists():
         app.app.subhub_account.model.create_table(
             read_capacity_units=1, write_capacity_units=1, wait=True
         )
-    if not app.app.webhook_table.model.exists():
-        app.app.webhook_table.model.create_table(
+    if not app.app.hub_table.model.exists():
+        app.app.hub_table.model.create_table(
             read_capacity_units=1, write_capacity_units=1, wait=True
         )
 
@@ -115,7 +115,7 @@ def create_app(config=None):
     @app.app.before_request
     def before_request():
         g.subhub_account = current_app.subhub_account
-        g.webhook_table = current_app.webhook_table
+        g.hub_table = current_app.hub_table
         g.app_system_id = None
         if CFG.PROFILING_ENABLED:
             if "profile" in request.args and not hasattr(sys, "_called_from_test"):

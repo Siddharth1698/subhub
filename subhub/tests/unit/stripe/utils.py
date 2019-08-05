@@ -10,15 +10,23 @@ import json
 
 from subhub.cfg import CFG
 from subhub import secrets
-from subhub.webhooks.stripe.controller import StripeWebhookEventPipeline
+from subhub.hub.stripe.controller import StripeHubEventPipeline, event_process, view
 
 __location__ = os.path.realpath(os.path.dirname(__file__))
 
 
 def run_test(filename):
     with open(os.path.join(__location__, filename)) as f:
-        pipeline = StripeWebhookEventPipeline(json.load(f))
+        pipeline = StripeHubEventPipeline(json.load(f))
         pipeline.run()
+
+
+def run_view(request):
+    view()
+
+
+def run_event_process(event):
+    return event_process(event)
 
 
 class MockSqsClient:

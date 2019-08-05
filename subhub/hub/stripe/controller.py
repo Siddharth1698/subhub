@@ -9,24 +9,23 @@ from flask import request, Response
 
 import stripe
 from subhub.cfg import CFG
-from subhub.webhooks.stripe.customer import StripeCustomerCreated
-from subhub.webhooks.stripe.charge import StripeChargeSucceededEvent
-from subhub.webhooks.stripe.customer import StripeCustomerDeleted
-from subhub.webhooks.stripe.customer import StripeCustomerSubscriptionCreated
-from subhub.webhooks.stripe.customer import StripeCustomerUpdated
-from subhub.webhooks.stripe.subscription import StripeSubscriptionCreated
-from subhub.webhooks.stripe.customer import StripeCustomerSubscriptionUpdated
-from subhub.webhooks.stripe.customer import StripeCustomerSubscriptionDeleted
-from subhub.webhooks.stripe.customer import StripeCustomerSourceExpiring
-from subhub.webhooks.stripe.invoices import StripeInvoiceFinalized
-from subhub.webhooks.stripe.invoices import StripeInvoicePaymentFailed
-from subhub.webhooks.stripe.intents import StripePaymentIntentSucceeded
+from subhub.hub.stripe.customer import StripeCustomerCreated
+from subhub.hub.stripe.customer import StripeCustomerDeleted
+from subhub.hub.stripe.customer import StripeCustomerSubscriptionCreated
+from subhub.hub.stripe.customer import StripeCustomerUpdated
+from subhub.hub.stripe.subscription import StripeSubscriptionCreated
+from subhub.hub.stripe.customer import StripeCustomerSubscriptionUpdated
+from subhub.hub.stripe.customer import StripeCustomerSubscriptionDeleted
+from subhub.hub.stripe.customer import StripeCustomerSourceExpiring
+from subhub.hub.stripe.invoices import StripeInvoiceFinalized
+from subhub.hub.stripe.invoices import StripeInvoicePaymentFailed
+from subhub.hub.stripe.intents import StripePaymentIntentSucceeded
 from subhub.log import get_logger
 
 logger = get_logger()
 
 
-class StripeWebhookEventPipeline:
+class StripeHubEventPipeline:
     def __init__(self, payload):
         assert isinstance(payload, object)
         self.payload = payload
@@ -47,8 +46,6 @@ class StripeWebhookEventPipeline:
             StripeCustomerDeleted(self.payload).run()
         elif event_type == "customer.source.expiring":
             StripeCustomerSourceExpiring(self.payload).run()
-        elif event_type == "charge.succeeded":
-            StripeChargeSucceededEvent(self.payload).run()
         elif event_type == "subscription.created":
             StripeSubscriptionCreated(self.payload).run()
         elif event_type == "invoice.finalized":
@@ -64,9 +61,11 @@ class StripeWebhookEventPipeline:
 def view() -> tuple:
     try:
         payload = request.data
+        logger.info("check payload", payload=payload)
+        logger.info("payload type", type=type(payload))
         sig_header = request.headers["Stripe-Signature"]
-        event = stripe.Webhook.construct_event(payload, sig_header, CFG.WEBHOOK_API_KEY)
-        pipeline = StripeWebhookEventPipeline(event)
+        event = stripe.Webhook.construct_event(payload, sig_header, CFG.HUB_API_KEY)
+        pipeline = StripeHubEventPipeline(event)
         pipeline.run()
     except ValueError as e:
         # Invalid payload
@@ -76,6 +75,22 @@ def view() -> tuple:
         # Invalid signature
         logger.error("SignatureVerificationError", error=e)
         return Response(status=400)
+    except Exception as e:
+        logger.error("General Exception", error=e)
+        return Response(e, status=500)
+
+    return Response("Success", status=200)
+
+
+def event_process(missing_event):
+    logger.info("event process", missing_event=missing_event)
+    try:
+        payload = missing_event
+        if not isinstance(payload, dict):
+            raise Exception
+        logger.info("check payload", payload=payload)
+        pipeline = StripeHubEventPipeline(payload)
+        pipeline.run()
     except Exception as e:
         logger.error("General Exception", error=e)
         return Response(e, status=500)

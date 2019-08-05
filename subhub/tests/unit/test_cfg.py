@@ -78,19 +78,19 @@ def test_BRANCH():
         assert CFG.BRANCH == "BRANCH"
 
 
-def test_DEPLOY_ENV():
+def test_DEPLOYED_ENV():
     """
     deployment environment
     """
     with cd(NON_GIT_REPO_PATH):
         os.environ["BRANCH"] = "master"
-        assert CFG.DEPLOY_ENV == "prod"
+        assert CFG.DEPLOYED_ENV == "prod"
         os.environ["BRANCH"] = "stage/example"
-        assert CFG.DEPLOY_ENV == "stage"
+        assert CFG.DEPLOYED_ENV == "stage"
         os.environ["BRANCH"] = "qa/example"
-        assert CFG.DEPLOY_ENV == "qa"
+        assert CFG.DEPLOYED_ENV == "qa"
         os.environ["BRANCH"] = "example"
-        assert CFG.DEPLOY_ENV == "dev"
+        assert CFG.DEPLOYED_ENV == "dev"
 
 
 def test_REVISION():
@@ -351,6 +351,14 @@ def test_ALLOWED_ORIGIN_SYSTEMS():
     allowed origin systems
     """
     assert isinstance(CFG.ALLOWED_ORIGIN_SYSTEMS, list)
+
+
+def test_PAYMENT_EVENT_LIST():
+    """
+    payment event list
+    :return:
+    """
+    assert isinstance(CFG.PAYMENT_EVENT_LIST, list)
 
 
 def test_PROFILING_ENABLED():

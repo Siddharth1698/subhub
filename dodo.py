@@ -10,6 +10,7 @@ import json
 import difflib
 import itertools
 import contextlib
+import threading
 
 from ruamel import yaml
 from functools import lru_cache
@@ -50,9 +51,11 @@ SVCS = [
     if os.path.isdir(f'services/{svc}') if os.path.isfile(f'services/{svc}/serverless.yml')
 ]
 
+mutex = threading.Lock()
+
 def envs(sep=' ', **kwargs):
     envs = dict(
-        DEPLOY_ENV=CFG.DEPLOY_ENV,
+        DEPLOYED_ENV=CFG.DEPLOYED_ENV,
         PROJECT_NAME=CFG.PROJECT_NAME,
         BRANCH=CFG.BRANCH,
         REVISION=CFG.REVISION,
@@ -69,7 +72,7 @@ def envs(sep=' ', **kwargs):
         DEPLOYED_WHEN=CFG.DEPLOYED_WHEN,
     )
     return sep.join([
-        f'{key}={value}' for key, value in dict(envs, **kwargs).items()
+        f'{key}={value}' for key, value in sorted(dict(envs, **kwargs).items())
     ])
 
 def globs(*patterns, **kwargs):
@@ -108,6 +111,7 @@ def pyfiles(path, exclude=None):
     pyfiles = set(Path(path).rglob('*.py')) - set(Path(exclude).rglob('*.py') if exclude else [])
     return [pyfile.as_posix() for pyfile in pyfiles]
 
+# TODO: This needs to check for the existence of the dependency prior to execution or update project requirements.
 def task_count():
     '''
     use the cloc utility to count lines of code
@@ -385,15 +389,21 @@ def task_dynalite():
     cmd = f'{DYNALITE} --port {CFG.DYNALITE_PORT}'
     msg = f'dynalite server started on {CFG.DYNALITE_PORT} logging to {CFG.DYNALITE_FILE}'
     def running():
+        mutex.acquire()
         pid = None
         try:
             pid = call(f'lsof -i:{CFG.DYNALITE_PORT} -t')[1].strip()
         except CalledProcessError:
             return None
+        finally:
+            mutex.release()
+        mutex.acquire()
         try:
             args = call(f'ps -p {pid} -o args=')[1].strip()
         except CalledProcessError:
             return None
+        finally:
+            mutex.release()
         if cmd in args:
             return pid
         return None
@@ -429,11 +439,13 @@ def task_dynalite():
 
 def task_local():
     '''
-    run locally
+    run local deployment
     '''
-    ID='fake-id'
-    KEY='fake-key'
-    PP='.'
+    ENVS=envs(
+        AWS_ACCESS_KEY_ID='fake-id',
+        AWS_SECRET_ACCESS_KEY='fake-key',
+        PYTHONPATH='.'
+    )
     return {
         'task_dep': [
             'check',
@@ -445,7 +457,7 @@ def task_local():
         'actions': [
             f'{PYTHON3} -m setup develop',
             'echo $PATH',
-            f'env {envs(AWS_ACCESS_KEY_ID=ID,AWS_SECRET_ACCESS_KEY=KEY,PYTHONPATH=PP)} {PYTHON3} subhub/app.py',
+            f'env {ENVS} {PYTHON3} subhub/app.py',
         ],
     }
 
@@ -463,16 +475,20 @@ def task_yarn():
         ],
     }
 
-def task_perf():
+def task_perf_local():
     '''
-    run locustio performance tests
+    run locustio performance tests on local deployment
     '''
-    ID='fake-id'
-    KEY='fake-key'
-    PP='.'
     FLASK_PORT=5000
-    cmd = f'env {envs(LOCAL_FLASK_PORT=FLASK_PORT, AWS_ACCESS_KEY_ID=ID, AWS_SECRET_ACCESS_KEY=KEY, PYTHONPATH=PP)} {PYTHON3} subhub/app.py'
+    ENVS=envs(
+        LOCAL_FLASK_PORT=FLASK_PORT,
+        AWS_ACCESS_KEY_ID='fake-id',
+        AWS_SECRET_ACCESS_KEY='fake-key',
+        PYTHONPATH='.'
+    )
+    cmd = f'env {ENVS} {PYTHON3} subhub/app.py'
     return {
+        'basename': 'perf-local',
         'task_dep':[
             'check',
             'stripe',
@@ -482,16 +498,17 @@ def task_perf():
         'actions':[
             f'{PYTHON3} -m setup develop',
             'echo $PATH',
-            LongRunning(f'nohup {cmd} > /dev/null &'),
+            LongRunning(f'nohup env {envs} {PYTHON3} subhub/app.py > /dev/null &'),
             f'cd subhub/tests/performance && locust -f locustfile.py --host=http://localhost:{FLASK_PORT}'
         ]
     }
 
-def task_remote_perf():
+def task_perf_remote():
     '''
-    run locustio performance tests
+    run locustio performance tests on remote deployment
     '''
     return {
+        'basename': 'perf-remote',
         'task_dep':[
             'check',
             'stripe',
@@ -556,7 +573,7 @@ def task_package():
                 'test',
             ],
             'actions': [
-                f'cd services/{svc} && env {envs()} {SLS} package --stage {CFG.DEPLOY_ENV} -v',
+                f'cd services/{svc} && env {envs()} {SLS} package --stage {CFG.DEPLOYED_ENV} -v',
             ],
         }
 
@@ -566,25 +583,44 @@ def task_deploy():
     '''
     for svc in SVCS:
         servicepath = f'services/{svc}'
-        curl = f'curl --silent https://{CFG.DEPLOY_ENV}.{svc}.mozilla-subhub.app/v1/version'
-        describe = 'git describe --abbrev=7'
-        yield {
-            'name': svc,
-            'task_dep': [
-                'check',
-                'creds',
-                'stripe',
-                'yarn',
-                'test',
-            ],
-            'actions': [
-                f'cd {servicepath} && env {envs()} {SLS} deploy --stage {CFG.DEPLOY_ENV} --aws-s3-accelerate -v',
-                f'echo "{curl}"',
-                f'{curl}',
-                f'echo "{describe}"',
-                f'{describe}',
-            ],
-        }
+        if svc != "missing-events":
+            curl = f'curl --silent https://{CFG.DEPLOYED_ENV}.{svc}.mozilla-subhub.app/v1/version'
+            describe = 'git describe --abbrev=7'
+            yield {
+                'name': svc,
+                'task_dep': [
+                    'check',
+                    'creds',
+                    'stripe',
+                    'yarn',
+                    'test',
+                ],
+                'actions': [
+                    f'cd {servicepath} && env {envs()} {SLS} deploy --stage {CFG.DEPLOYED_ENV} --aws-s3-accelerate -v',
+                    f'echo "{curl}"',
+                    f'{curl}',
+                    f'echo "{describe}"',
+                    f'{describe}',
+                ],
+            }
+        else:
+            describe = 'git describe --abbrev=7'
+            yield {
+                'name': svc,
+                'task_dep': [
+                    'check',
+                    'creds',
+                    'stripe',
+                    'yarn',
+                    'test',
+                ],
+                'actions': [
+                    f'cd {servicepath} && env {envs()} {SLS} deploy --stage {CFG.DEPLOYED_ENV} --aws-s3-accelerate -v',
+                    f'echo "{describe}"',
+                    f'{describe}',
+                ],
+            }
+
 
 def task_remove():
     '''
@@ -616,6 +652,18 @@ def task_pip3list():
             f'{PIP3} list',
         ],
     }
+
+def task_curl():
+    '''
+    curl again remote deployment url: /version, /deployed
+    '''
+    for route in ('deployed', 'version'):
+        yield {
+            'name': route,
+            'actions': [
+                f'curl --silent https://{CFG.DEPLOYED_ENV}.fxa.mozilla-subhub.app/v1/{route}',
+            ],
+        }
 
 def task_rmrf():
     '''
@@ -659,6 +707,14 @@ def task_tidy():
             'rm -rf ' + ' '.join(TIDY_FILES),
             'find . | grep -E "(__pycache__|\.pyc$)" | xargs rm -rf',
         ],
+    }
+
+def task_draw():
+    """generate image from a dot file"""
+    return {
+        'file_dep': ['tasks.dot'],
+        'targets': ['tasks.png'],
+        'actions': ['dot -Tpng %(dependencies)s -o %(targets)s'],
     }
 
 if __name__ == '__main__':
