@@ -14,7 +14,7 @@ from flask import g
 from stripe.error import InvalidRequestError
 from unittest.mock import Mock, MagicMock, PropertyMock
 
-from subhub.api import payments
+from subhub.sub import payments
 from subhub.customer import (
     create_customer,
     subscribe_customer,
@@ -172,7 +172,7 @@ def test_subscribe_customer(monkeypatch):
     assert subscription is not None
 
 
-def test_subscribe_customer_invalid_plan(monkeypatch):
+def test_subscribe_customer_invalid_data(monkeypatch):
     """
     GIVEN create a subscription
     WHEN provided a customer and plan
@@ -188,60 +188,6 @@ def test_subscribe_customer_invalid_plan(monkeypatch):
 
     with pytest.raises(InvalidRequestError):
         subscribe_customer(mock_customer, "invalid_plan_id")
-
-
-def test_create_subscription_with_invalid_payment_token():
-    """
-    GIVEN a api_token, userid, invalid pmt_token, plan_id, email
-    WHEN the pmt_token is invalid
-    THEN a StripeError should be raised
-    """
-    exception = None
-    try:
-        subscription, code = payments.subscribe_to_plan(
-            "invalid_test",
-            {
-                "pmt_token": "tok_invalid",
-                "plan_id": "plan_EtMcOlFMNWW4nd",
-                "email": "invalid_test@test.com",
-                "orig_system": "Test_system",
-                "display_name": "Jon Tester",
-            },
-        )
-    except Exception as e:
-        exception = e
-
-    g.subhub_account.remove_from_db("invalid_test")
-
-    assert isinstance(exception, InvalidRequestError)
-    assert "Unable to create customer." in exception.user_message
-
-
-def test_create_subscription_with_invalid_plan_id(app):
-    """
-    GIVEN a api_token, userid, pmt_token, plan_id, email
-    WHEN the plan_id provided is invalid
-    THEN a StripeError is raised
-    """
-    exception = None
-    try:
-        plan, code = payments.subscribe_to_plan(
-            "invalid_plan",
-            {
-                "pmt_token": "tok_visa",
-                "plan_id": "plan_abc123",
-                "email": "invalid_plan@tester.com",
-                "orig_system": "Test_system",
-                "display_name": "Jon Tester",
-            },
-        )
-    except Exception as e:
-        exception = e
-
-    g.subhub_account.remove_from_db("invalid_plan")
-
-    assert isinstance(exception, InvalidRequestError)
-    assert "No such plan:" in exception.user_message
 
 
 def test_cancel_subscription_with_valid_data(app, create_subscription_for_processing):
