@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 # 130     42    68%   79-81, 84-91, 107-109, 136, 139-144, 148-153, 156-164, 167-172
 # 121     34    72%   79-81, 97-99, 126, 129-134, 138-143, 146-154, 157-162
 from mockito import when, mock, unstub
