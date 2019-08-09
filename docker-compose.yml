@@ -10,8 +10,8 @@ services:
     build:
       context: .
       args:
-        AWS_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE"
-        AWS_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+        AWS_ACCESS_KEY_ID: "fake-id"
+        AWS_SECRET_ACCESS_KEY: "fake-key"
         STRIPE_API_KEY: "sk_test_123"
         SUPPORT_API_KEY: "support_test"
         LOCAL_FLASK_PORT: 5000
